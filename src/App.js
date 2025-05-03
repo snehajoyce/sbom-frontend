@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
@@ -7,7 +7,6 @@ import Upload from './pages/Upload';
 import Search from './pages/Search';
 import Compare from './pages/Compare';
 import Generate from './pages/Generate';
-import ChooseAndCompare from './pages/ChooseAndCompare';
 import SBOMDetails from './pages/SBOMDetails';
 import Statistics from './pages/Statistics';
 
@@ -42,7 +41,6 @@ function App() {
             <Route path="/upload" element={<Upload />} />
             <Route path="/search" element={<Search />} />
             <Route path="/compare" element={<Compare />} />
-            <Route path="/choose-compare" element={<ChooseAndCompare />} />
             <Route path="/sbom-details/:filename" element={<SBOMDetails />} />
             <Route path="/statistics" element={<Statistics />} />
           </Routes>
