@@ -1,6 +1,7 @@
 // src/pages/Compare.js
 import React, { useState, useEffect } from 'react';
 import { fetchSBOMs, compareSBOMs } from '../services/api';
+import Select from 'react-select';
 
 const Compare = () => {
   const [sboms, setSboms] = useState([]);
@@ -9,16 +10,26 @@ const Compare = () => {
   const [compareResults, setCompareResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const options = sboms.map(file => ({ value: file, label: file }));
+  // Define custom styles to ensure dropdown text is black on white background
+  const selectStyles = {
+    control: (provided) => ({ ...provided, backgroundColor: '#fff' }),
+    input: (provided) => ({ ...provided, color: '#000' }),
+    singleValue: (provided) => ({ ...provided, color: '#000' }),
+    menu: (provided) => ({ ...provided, backgroundColor: '#fff' }),
+    option: (provided, { isFocused, isSelected }) => ({
+      ...provided,
+      backgroundColor: isSelected ? '#ddd' : isFocused ? '#eee' : '#fff',
+      color: '#000',
+    }),
+  };
 
   useEffect(() => {
     const fetchSBOMList = async () => {
       try {
         const data = await fetchSBOMs();
         setSboms(data);
-        if (data.length > 1) {
-          setCompare1(data[0]);
-          setCompare2(data[1]);
-        }
+        // Removed default SBOM selections to start with empty fields
       } catch (err) {
         console.error('Error fetching SBOMs:', err);
         setError('Failed to load SBOM list. Please try again later.');
@@ -59,41 +70,37 @@ const Compare = () => {
       
       <div className="card bg-dark text-light mb-4">
         <div className="card-body">
-          <div className="row g-2 mb-3">
-            <div className="col-md-5">
-              <label className="form-label">SBOM 1</label>
-              <select
-                className="form-select"
-                value={compare1}
-                onChange={(e) => setCompare1(e.target.value)}
-              >
-                <option value="">Select an SBOM file</option>
-                {sboms.map((file, idx) => (
-                  <option key={idx} value={file}>{file}</option>
-                ))}
-              </select>
-            </div>
-            <div className="col-md-5">
-              <label className="form-label">SBOM 2</label>
-              <select
-                className="form-select"
-                value={compare2}
-                onChange={(e) => setCompare2(e.target.value)}
-              >
-                <option value="">Select an SBOM file</option>
-                {sboms.map((file, idx) => (
-                  <option key={idx} value={file}>{file}</option>
-                ))}
-              </select>
-            </div>
-            <div className="col-md-2 d-flex align-items-end">
+      <div className="row g-2 mb-3">
+        <div className="col-md-5">
+          <label className="form-label">SBOM 1</label>
+          <Select
+            options={options}
+            styles={selectStyles}
+            value={options.find(o => o.value === compare1) || null}
+            onChange={(option) => setCompare1(option ? option.value : '')}
+            placeholder="Select an SBOM file"
+            isClearable={true}
+          />
+        </div>
+        <div className="col-md-5">
+          <label className="form-label">SBOM 2</label>
+          <Select
+            options={options}
+            styles={selectStyles}
+            value={options.find(o => o.value === compare2) || null}
+            onChange={(option) => setCompare2(option ? option.value : '')}
+            placeholder="Select an SBOM file"
+            isClearable={true}
+          />
+        </div>
+        <div className="col-md-2 d-flex align-items-end">
               <button 
                 className="btn btn-warning w-100" 
                 onClick={handleCompare}
                 disabled={loading || !compare1 || !compare2}
               >
                 {loading ? 'Comparing...' : 'Compare'}
-              </button>
+          </button>
             </div>
           </div>
           {error && <div className="alert alert-danger mt-3">{error}</div>}
@@ -156,13 +163,13 @@ const Compare = () => {
                         <div className="col-md-4 mb-3">
                           <div className="text-center">
                             <h3 className="text-danger">{compareResults.comparison_stats?.only_in_first_count || 0}</h3>
-                            <p>Only in SBOM 1</p>
+                            <p>Unique Components in First SBOM</p>
                           </div>
                         </div>
                         <div className="col-md-4 mb-3">
                           <div className="text-center">
                             <h3 className="text-info">{compareResults.comparison_stats?.only_in_second_count || 0}</h3>
-                            <p>Only in SBOM 2</p>
+                            <p>Unique to Second SBOM</p>
                           </div>
                         </div>
                       </div>
@@ -177,28 +184,28 @@ const Compare = () => {
                   <h5 className="mb-0">License Comparison</h5>
                 </div>
                 <div className="card-body">
-                  <div className="row">
-                    <div className="col-md-6">
+        <div className="row">
+          <div className="col-md-6">
                       <h6 className="text-center mb-3">SBOM 1 Licenses</h6>
-                      <ul className="list-group">
+            <ul className="list-group">
                         {Object.entries(compareResults.sbom1_licenses || {}).map(([license, count], idx) => (
                           <li key={idx} className="list-group-item bg-dark text-light d-flex justify-content-between align-items-center">
                             {license}
                             <span className="badge bg-warning rounded-pill">{count}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div className="col-md-6">
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="col-md-6">
                       <h6 className="text-center mb-3">SBOM 2 Licenses</h6>
-                      <ul className="list-group">
+            <ul className="list-group">
                         {Object.entries(compareResults.sbom2_licenses || {}).map(([license, count], idx) => (
                           <li key={idx} className="list-group-item bg-dark text-light d-flex justify-content-between align-items-center">
                             {license}
                             <span className="badge bg-warning rounded-pill">{count}</span>
-                          </li>
-                        ))}
-                      </ul>
+                </li>
+              ))}
+            </ul>
                     </div>
                   </div>
                 </div>
@@ -215,7 +222,7 @@ const Compare = () => {
                     type="button" 
                     role="tab"
                   >
-                    Common Components ({compareResults.common_components?.length || 0})
+                    Shared Components ({compareResults.common_components?.length || 0})
                   </button>
                 </li>
                 <li className="nav-item" role="presentation">
@@ -227,7 +234,7 @@ const Compare = () => {
                     type="button" 
                     role="tab"
                   >
-                    Only in SBOM 1 ({compareResults.only_in_first?.length || 0})
+                    Unique Components in First SBOM ({compareResults.only_in_first?.length || 0})
                   </button>
                 </li>
                 <li className="nav-item" role="presentation">
@@ -239,7 +246,7 @@ const Compare = () => {
                     type="button" 
                     role="tab"
                   >
-                    Only in SBOM 2 ({compareResults.only_in_second?.length || 0})
+                    Unique Components in Second SBOM ({compareResults.only_in_second?.length || 0})
                   </button>
                 </li>
               </ul>

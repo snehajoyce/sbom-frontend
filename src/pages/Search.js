@@ -173,13 +173,13 @@ const Search = () => {
           </div>
           
           <div className="d-flex gap-2">
-            <button
-              type="submit"
-              className="btn btn-warning"
+          <button
+            type="submit"
+            className="btn btn-warning"
               disabled={isSearching}
-            >
-              {isSearching ? 'Searching...' : 'Search'}
-            </button>
+          >
+            {isSearching ? 'Searching...' : 'Search'}
+          </button>
             <button
               type="button"
               className="btn btn-outline-light"
@@ -208,7 +208,7 @@ const Search = () => {
                 </tr>
               </thead>
               <tbody>
-                {results.map((item, idx) => (
+            {results.map((item, idx) => (
                   <tr key={idx}>
                     <td>{item.app_name}</td>
                     <td>{item.category || 'N/A'}</td>
@@ -222,7 +222,7 @@ const Search = () => {
                       </a>
                     </td>
                   </tr>
-                ))}
+            ))}
               </tbody>
             </table>
           </div>

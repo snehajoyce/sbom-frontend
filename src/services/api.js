@@ -3,7 +3,7 @@ import axios from 'axios';
 // Determine API base URL based on environment - no env files needed for Vercel
 const isProduction = window.location.hostname !== 'localhost';
 const API_BASE_URL = isProduction 
-  ? 'https://sbom-finder-backend.vercel.app' // Production URL
+  ? 'http://35.199.29.71' // Production URL (Updated)
   : 'http://localhost:5001'; // Local development URL
 
 console.log('Using API URL:', API_BASE_URL);
@@ -138,16 +138,16 @@ export const generateSBOM = async (formData) => {
       method: 'post',
       url: `${API_BASE_URL}/api/generate-sbom`,
       data: formData,
-      headers: {
-        'Content-Type': 'multipart/form-data'
+    headers: {
+      'Content-Type': 'multipart/form-data'
       },
       onUploadProgress: (progressEvent) => {
         const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
         console.log(`Generate SBOM upload progress: ${percentCompleted}%`);
-      }
-    });
+    }
+  });
     
-    return response.data;
+  return response.data;
   } catch (error) {
     console.error('Generate SBOM error:', error);
     throw error;
