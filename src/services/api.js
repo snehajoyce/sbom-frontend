@@ -1,10 +1,7 @@
 import axios from 'axios';
 
-// Determine API base URL based on environment - no env files needed for Vercel
-const isProduction = window.location.hostname !== 'localhost';
-const API_BASE_URL = isProduction 
-  ? 'http://35.199.29.71' // Production URL (Updated)
-  : 'http://localhost:5001'; // Local development URL
+// Use the Google Cloud Run URL for all environments
+const API_BASE_URL = 'https://sbom-finder-cxjx6cwbra-uk.a.run.app'; 
 
 console.log('Using API URL:', API_BASE_URL);
 
@@ -40,9 +37,9 @@ export const getSBOMByFilename = async (filename) => {
 };
 
 // Search for SBOMs by various criteria
-export const searchSBOMs = async (criteria) => {
+export const searchSBOM = async (keyword) => {
   const response = await apiClient.get('/api/search', {
-    params: criteria
+    params: { keyword }
   });
   return response.data;
 };
@@ -57,8 +54,14 @@ export const searchComponents = async (keyword, sbomFile) => {
 };
 
 // Compare two SBOMs
-export const compareSBOMs = async (sbom1, sbom2) => {
-  const response = await apiClient.post('/api/compare', { sbom1, sbom2 });
+export const compareSBOMs = async (file1, file2) => {
+  const response = await apiClient.post('/api/compare', { file1, file2 });
+  return response.data;
+};
+
+// Compare two SBOMs in a dataset context
+export const compareDatasetSBOMs = async (file1, file2) => {
+  const response = await apiClient.post('/api/compare-dataset', { file1, file2 });
   return response.data;
 };
 
@@ -81,6 +84,12 @@ export const getSuggestions = async (field, prefix = '') => {
   const response = await apiClient.get('/api/suggestions', {
     params: { field, prefix }
   });
+  return response.data;
+};
+
+// Fetch a dataset
+export const fetchDataset = async () => {
+  const response = await apiClient.get('/api/dataset');
   return response.data;
 };
 
@@ -136,18 +145,18 @@ export const generateSBOM = async (formData) => {
   try {
     const response = await axios({
       method: 'post',
-      url: `${API_BASE_URL}/api/generate-sbom`,
+      url: `${API_BASE_URL}/api/generate`,
       data: formData,
-    headers: {
-      'Content-Type': 'multipart/form-data'
+      headers: {
+        'Content-Type': 'multipart/form-data'
       },
       onUploadProgress: (progressEvent) => {
         const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
         console.log(`Generate SBOM upload progress: ${percentCompleted}%`);
-    }
-  });
+      }
+    });
     
-  return response.data;
+    return response.data;
   } catch (error) {
     console.error('Generate SBOM error:', error);
     throw error;
