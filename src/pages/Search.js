@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { searchSBOMs, getSuggestions } from '../services/api';
+import { searchSBOM, getSuggestions } from '../services/api';
 
 const Search = () => {
   const [searchParams, setSearchParams] = useState({
@@ -54,7 +54,7 @@ const Search = () => {
           return obj;
         }, {});
 
-      const response = await searchSBOMs(searchCriteria);
+      const response = await searchSBOM(searchCriteria);
       setResults(response.results || []);
       setTotalResults(response.count || 0);
     } catch (error) {
