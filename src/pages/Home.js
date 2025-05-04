@@ -36,22 +36,8 @@ const Home = () => {
 
   return (
     <div className="container mt-4">
-      <div className="jumbotron bg-dark p-4 rounded border border-secondary mb-4">
-        <h1 className="display-5 text-warning">Welcome to SBOM Finder</h1>
-        <p className="lead text-light">
-          A comprehensive tool for managing and analyzing Software Bill of Materials (SBOM).
-        </p>
-        <hr className="my-4 border-light" />
-        <p className="text-light">
-          You can upload, generate, search, and compare SBOMs for different software applications.
-        </p>
-        <div className="d-flex gap-2">
-          <Link to="/upload" className="btn btn-warning">Upload SBOM</Link>
-          <Link to="/generate" className="btn btn-outline-warning">Generate SBOM</Link>
-          <Link to="/search" className="btn btn-outline-light">Search SBOMs</Link>
-        </div>
-      </div>
-
+      <h1 className="display-5 text-warning mb-4">Welcome to SBOM Finder</h1>
+      
       <div className="row mb-4">
         <div className="col-md-6">
           <div className="card bg-dark text-light h-100">
@@ -87,7 +73,7 @@ const Home = () => {
                 <div className="alert alert-danger">{error}</div>
               ) : sboms.length === 0 ? (
                 <div className="alert alert-info">
-                  No SBOMs available. Upload or generate an SBOM to get started.
+                  No SBOMs available. Use the navigation bar to upload or generate an SBOM.
                 </div>
               ) : (
                 <>
