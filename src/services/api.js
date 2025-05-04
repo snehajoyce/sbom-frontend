@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Use the Google Cloud Run URL for all environments
-const API_BASE_URL = 'https://sbom-finder-cxjx6cwbra-uk.a.run.app'; 
+// Use localhost for development
+const API_BASE_URL = 'http://localhost:5001'; 
 
 console.log('Using API URL:', API_BASE_URL);
 
