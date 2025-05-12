@@ -1,7 +1,7 @@
 // src/pages/Home.js
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchSBOMsMetadata, API_BASE_URL } from '../services/api';
+import { fetchSBOMsMetadata, fetchSBOMs } from '../services/api';
 
 const Home = () => {
   const [sboms, setSboms] = useState([]);
@@ -14,9 +14,70 @@ const Home = () => {
     const loadSBOMs = async () => {
       try {
         setLoading(true);
-        const data = await fetchSBOMsMetadata();
-        setSboms(data);
-        setError(null);
+        
+        // Create a Set to store unique filenames and prevent duplicates
+        const uniqueSboms = new Map();
+        let hasError = false;
+        
+        // Try all available sources to get the most comprehensive list
+        try {
+          // 1. Try metadata endpoint (has the most details)
+          const metadataResponse = await fetchSBOMsMetadata();
+          
+          if (metadataResponse && metadataResponse.data && Array.isArray(metadataResponse.data)) {
+            metadataResponse.data.forEach(sbom => {
+              if (sbom.filename) {
+                uniqueSboms.set(sbom.filename, sbom);
+              }
+            });
+          } else if (Array.isArray(metadataResponse)) {
+            metadataResponse.forEach(sbom => {
+              if (sbom.filename) {
+                uniqueSboms.set(sbom.filename, sbom);
+              }
+            });
+          }
+        } catch (err) {
+          console.error('Error fetching SBOM metadata:', err);
+          hasError = true;
+        }
+        
+        try {
+          // 2. Try basic SBOM list
+          const basicList = await fetchSBOMs();
+          
+          if (basicList && basicList.data && Array.isArray(basicList.data)) {
+            basicList.data.forEach(sbom => {
+              if (sbom.filename) {
+                uniqueSboms.set(sbom.filename, sbom);
+              }
+            });
+          } else if (Array.isArray(basicList)) {
+            basicList.forEach(filename => {
+              if (!uniqueSboms.has(filename)) {
+                uniqueSboms.set(filename, {
+                  filename,
+                  app_name: filename.replace('.json', '')
+                });
+              }
+            });
+          }
+        } catch (err) {
+          console.error('Error fetching basic SBOM list:', err);
+          hasError = true;
+        }
+        
+        // Convert the Map to an array
+        const allSboms = Array.from(uniqueSboms.values());
+        
+        if (allSboms.length > 0) {
+          setSboms(allSboms);
+          setError(null);
+        } else if (hasError) {
+          setError('Could not load SBOM data. Please try again later.');
+        } else {
+          setError(null);
+        }
       } catch (err) {
         console.error('Failed to load SBOMs:', err);
         setError('Failed to load SBOM data. Please try again later.');
@@ -78,7 +139,7 @@ const Home = () => {
               ) : (
                 <>
                   <div className="mb-3">
-                    <label htmlFor="sbomSelect" className="form-label">Select an SBOM to view details:</label>
+                    <label htmlFor="sbomSelect" className="form-label">Select an SBOM to view details ({sboms.length} available):</label>
                     <select 
                       id="sbomSelect" 
                       className="form-select"
@@ -86,9 +147,9 @@ const Home = () => {
                       defaultValue=""
                     >
                       <option value="" disabled>Choose an SBOM...</option>
-                      {sboms.map(sbom => (
-                        <option key={sbom.filename} value={sbom.filename}>
-                          {sbom.app_name} {sbom.version ? `(v${sbom.version})` : ''}
+                      {sboms.map((sbom, index) => (
+                        <option key={index} value={sbom.filename}>
+                          {sbom.app_name || sbom.filename} {sbom.version ? `(v${sbom.version})` : ''} 
                         </option>
                       ))}
                     </select>
@@ -96,7 +157,7 @@ const Home = () => {
 
                   {selectedSbom && (
                     <div className="mt-3 p-3 border border-secondary rounded">
-                      <h6 className="text-warning">{selectedSbom.app_name} Details</h6>
+                      <h6 className="text-warning">{selectedSbom.app_name || selectedSbom.filename} Details</h6>
                       <div className="row g-2">
                         {selectedSbom.category && (
                           <div className="col-md-6">
@@ -108,6 +169,18 @@ const Home = () => {
                           <div className="col-md-6">
                             <p className="mb-1"><small className="text-muted">OS:</small></p>
                             <p className="mb-2">{selectedSbom.operating_system}</p>
+                          </div>
+                        )}
+                        {selectedSbom.total_components && (
+                          <div className="col-md-6">
+                            <p className="mb-1"><small className="text-muted">Components:</small></p>
+                            <p className="mb-2">{selectedSbom.total_components}</p>
+                          </div>
+                        )}
+                        {selectedSbom.unique_licenses && (
+                          <div className="col-md-6">
+                            <p className="mb-1"><small className="text-muted">Licenses:</small></p>
+                            <p className="mb-2">{selectedSbom.unique_licenses}</p>
                           </div>
                         )}
                       </div>

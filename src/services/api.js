@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Use localhost for development
-const API_BASE_URL = 'http://localhost:5001'; 
+const API_BASE_URL = 'http://localhost:5000'; 
 
 console.log('Using API URL:', API_BASE_URL);
 
@@ -32,14 +32,20 @@ export const fetchSBOMsMetadata = async () => {
 
 // Get specific SBOM file content by filename
 export const getSBOMByFilename = async (filename) => {
-  const response = await apiClient.get(`/api/sbom/${filename}`);
+  const response = await apiClient.get(`/api/sbom-file/${filename}`);
   return response.data;
 };
 
 // Search for SBOMs by various criteria
-export const searchSBOM = async (keyword) => {
+export const searchSBOM = async (searchParams) => {
+  // Ensure the key is 'operating_system' not 'os'
+  const params = { ...searchParams };
+  if (params.os) {
+    params.operating_system = params.os;
+    delete params.os;
+  }
   const response = await apiClient.get('/api/search', {
-    params: { keyword }
+    params
   });
   return response.data;
 };
@@ -74,8 +80,10 @@ export const getSBOMStatistics = async (filters = {}) => {
 };
 
 // Get platform-specific statistics
-export const getPlatformStatistics = async () => {
-  const response = await apiClient.get('/api/platform-stats');
+export const getPlatformStatistics = async (filters = {}) => {
+  const response = await apiClient.get('/api/platform-stats', {
+    params: filters
+  });
   return response.data;
 };
 
@@ -84,12 +92,6 @@ export const getSuggestions = async (field, prefix = '') => {
   const response = await apiClient.get('/api/suggestions', {
     params: { field, prefix }
   });
-  return response.data;
-};
-
-// Fetch a dataset
-export const fetchDataset = async () => {
-  const response = await apiClient.get('/api/dataset');
   return response.data;
 };
 
@@ -145,7 +147,7 @@ export const generateSBOM = async (formData) => {
   try {
     const response = await axios({
       method: 'post',
-      url: `${API_BASE_URL}/api/generate`,
+      url: `${API_BASE_URL}/api/generate-sbom`,
       data: formData,
       headers: {
         'Content-Type': 'multipart/form-data'

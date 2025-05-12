@@ -10,7 +10,17 @@ const Compare = () => {
   const [compareResults, setCompareResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const options = sboms.map(file => ({ value: file, label: file }));
+  
+  // Ensure sboms is always an array before using map
+  const sbomArray = Array.isArray(sboms) ? sboms : 
+                   (sboms && sboms.data && Array.isArray(sboms.data)) ? sboms.data : [];
+  
+  const options = sbomArray.map(file => {
+    const label = typeof file === 'string' ? file : (file.filename || file.appName || 'Unknown');
+    const value = typeof file === 'string' ? file : (file.filename || '');
+    return { value, label };
+  });
+  
   // Define custom styles to ensure dropdown text is black on white background
   const selectStyles = {
     control: (provided) => ({ ...provided, backgroundColor: '#fff' }),
@@ -27,9 +37,19 @@ const Compare = () => {
   useEffect(() => {
     const fetchSBOMList = async () => {
       try {
-        const data = await fetchSBOMs();
-        setSboms(data);
-        // Removed default SBOM selections to start with empty fields
+        const response = await fetchSBOMs();
+        
+        // Handle various response formats
+        if (response && response.data && Array.isArray(response.data)) {
+          setSboms(response.data);
+        } else if (Array.isArray(response)) {
+          setSboms(response);
+        } else if (response && response.success && response.data) {
+          setSboms(response.data);
+        } else {
+          setSboms([]);
+          setError('Received invalid SBOM data format');
+        }
       } catch (err) {
         console.error('Error fetching SBOMs:', err);
         setError('Failed to load SBOM list. Please try again later.');
@@ -54,8 +74,17 @@ const Compare = () => {
     setError(null);
 
     try {
-      const results = await compareSBOMs(compare1, compare2);
-      setCompareResults(results);
+      // Extract filenames if objects are selected instead of strings
+      const file1 = typeof compare1 === 'string' ? compare1 : compare1.filename;
+      const file2 = typeof compare2 === 'string' ? compare2 : compare2.filename;
+      
+      const results = await compareSBOMs(file1, file2);
+      
+      if (results && results.data) {
+        setCompareResults(results.data);
+      } else {
+        setCompareResults(results);
+      }
     } catch (err) {
       console.error('Compare error:', err);
       setError('Failed to compare SBOMs. Please try again later.');

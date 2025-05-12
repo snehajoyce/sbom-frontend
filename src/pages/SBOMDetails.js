@@ -5,21 +5,50 @@ import { getSBOMByFilename, searchComponents } from '../services/api';
 const SBOMDetails = () => {
   const { filename } = useParams();
   const [sbom, setSBOM] = useState(null);
-  const [metadata, setMetadata] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+  const [componentTypes, setComponentTypes] = useState({});
+  const [licenseCount, setLicenseCount] = useState({});
 
   useEffect(() => {
     const fetchSBOMDetails = async () => {
       try {
         setLoading(true);
         const response = await getSBOMByFilename(filename);
-        setSBOM(response.sbom_data);
-        setMetadata(response.metadata || {});
+        
+        if (response && response.data) {
+          setSBOM(response.data);
+          
+          // Process components to get statistics
+          const components = extractComponents(response.data.content);
+          const typesCount = {};
+          const licenseMap = {};
+          
+          components.forEach(comp => {
+            // Count component types
+            const type = comp.type || 'Unknown';
+            typesCount[type] = (typesCount[type] || 0) + 1;
+            
+            // Count licenses
+            if (comp.licenses && Array.isArray(comp.licenses)) {
+              comp.licenses.forEach(lic => {
+                const licenseId = typeof lic === 'string' 
+                  ? lic 
+                  : (lic.license?.id || lic.expression || 'Unknown');
+                licenseMap[licenseId] = (licenseMap[licenseId] || 0) + 1;
+              });
+            }
+          });
+          
+          setComponentTypes(typesCount);
+          setLicenseCount(licenseMap);
+        } else {
+          setError('Invalid SBOM data received');
+        }
       } catch (error) {
         console.error('Error fetching SBOM details:', error);
         setError('Failed to load SBOM details. Please try again later.');
@@ -40,10 +69,15 @@ const SBOMDetails = () => {
     setIsSearching(true);
     try {
       const results = await searchComponents(searchTerm, filename);
-      setSearchResults(results.results || []);
-      setActiveTab('search');
+      if (results && results.data) {
+        setSearchResults(results.data || []);
+        setActiveTab('search');
+      } else {
+        setSearchResults([]);
+      }
     } catch (error) {
       console.error('Error searching components:', error);
+      setSearchResults([]);
     } finally {
       setIsSearching(false);
     }
@@ -70,6 +104,105 @@ const SBOMDetails = () => {
     return [];
   };
 
+  const renderLicenseDistribution = () => {
+    const sortedLicenses = Object.entries(licenseCount)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10); // Show top 10 licenses
+    
+    return (
+      <div className="mt-4">
+        <h5 className="text-warning">Top Licenses</h5>
+        <div className="table-responsive">
+          <table className="table table-dark table-hover">
+            <thead>
+              <tr>
+                <th>License</th>
+                <th>Count</th>
+                <th>Proportion</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedLicenses.map(([license, count], idx) => {
+                const total = Object.values(licenseCount).reduce((a, b) => a + b, 0);
+                const percentage = ((count / total) * 100).toFixed(1);
+                
+                return (
+                  <tr key={idx}>
+                    <td>{license}</td>
+                    <td>{count}</td>
+                    <td>
+                      <div className="d-flex align-items-center">
+                        <div className="progress flex-grow-1 bg-secondary me-2" style={{ height: '10px' }}>
+                          <div 
+                            className="progress-bar bg-warning" 
+                            style={{ width: `${percentage}%` }}
+                            aria-valuenow={percentage}
+                            aria-valuemin="0"
+                            aria-valuemax="100"
+                          ></div>
+                        </div>
+                        {percentage}%
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+  
+  const renderComponentTypesDistribution = () => {
+    const sortedTypes = Object.entries(componentTypes)
+      .sort((a, b) => b[1] - a[1]);
+    
+    return (
+      <div className="mt-4">
+        <h5 className="text-warning">Component Types</h5>
+        <div className="table-responsive">
+          <table className="table table-dark table-hover">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Count</th>
+                <th>Proportion</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedTypes.map(([type, count], idx) => {
+                const total = Object.values(componentTypes).reduce((a, b) => a + b, 0);
+                const percentage = ((count / total) * 100).toFixed(1);
+                
+                return (
+                  <tr key={idx}>
+                    <td>{type}</td>
+                    <td>{count}</td>
+                    <td>
+                      <div className="d-flex align-items-center">
+                        <div className="progress flex-grow-1 bg-secondary me-2" style={{ height: '10px' }}>
+                          <div 
+                            className="progress-bar bg-warning" 
+                            style={{ width: `${percentage}%` }}
+                            aria-valuenow={percentage}
+                            aria-valuemin="0"
+                            aria-valuemax="100"
+                          ></div>
+                        </div>
+                        {percentage}%
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="container mt-5 text-center">
@@ -90,12 +223,14 @@ const SBOMDetails = () => {
     );
   }
 
-  const components = extractComponents(sbom);
+  const components = sbom?.content ? extractComponents(sbom.content) : [];
+  const totalComponents = components.length;
+  const totalLicenses = Object.keys(licenseCount).length;
 
   return (
     <div className="container mt-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2 className="text-warning">SBOM Details: {metadata.app_name || filename}</h2>
+        <h2 className="text-warning">SBOM Details: {sbom?.appName || filename}</h2>
         <Link to="/search" className="btn btn-outline-light">Back to Search</Link>
       </div>
 
@@ -106,26 +241,51 @@ const SBOMDetails = () => {
               <h5 className="card-title text-warning">Metadata</h5>
               <div className="row">
                 <div className="col-md-6">
-                  <p><strong>App Name:</strong> {metadata.app_name || 'N/A'}</p>
-                  <p><strong>Category:</strong> {metadata.category || 'N/A'}</p>
-                  <p><strong>OS:</strong> {metadata.operating_system || 'N/A'}</p>
+                  <p><strong>App Name:</strong> {sbom?.appName || 'N/A'}</p>
+                  <p><strong>App Version:</strong> {sbom?.appVersion || 'N/A'}</p>
+                  <p><strong>Category:</strong> {sbom?.category || 'N/A'}</p>
+                  <p><strong>OS:</strong> {sbom?.operatingSystem || 'N/A'}</p>
                 </div>
                 <div className="col-md-6">
-                  <p><strong>Binary Type:</strong> {metadata.binary_type || 'N/A'}</p>
-                  <p><strong>Supplier:</strong> {metadata.supplier || 'N/A'}</p>
-                  <p><strong>Manufacturer:</strong> {metadata.manufacturer || 'N/A'}</p>
+                  <p><strong>Binary Type:</strong> {sbom?.binaryType || 'N/A'}</p>
+                  <p><strong>Supplier:</strong> {sbom?.supplier || 'N/A'}</p>
+                  <p><strong>Component Count:</strong> {totalComponents}</p>
+                  <p><strong>License Count:</strong> {totalLicenses}</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
         <div className="col-md-4">
-          <div className="card bg-dark text-light">
-            <div className="card-body">
-              <h5 className="card-title text-warning">Stats</h5>
-              <p><strong>Total Components:</strong> {metadata.total_components || components.length}</p>
-              <p><strong>Unique Licenses:</strong> {metadata.unique_licenses || 'N/A'}</p>
-              <p><strong>Version:</strong> {metadata.version || 'N/A'}</p>
+          <div className="card bg-dark text-light h-100">
+            <div className="card-body d-flex flex-column justify-content-center align-items-center text-center">
+              <h5 className="card-title text-warning">Component Breakdown</h5>
+              {Object.keys(componentTypes).length > 0 ? (
+                <div className="w-100">
+                  {Object.entries(componentTypes)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 3)
+                    .map(([type, count], idx) => {
+                      const percentage = ((count / totalComponents) * 100).toFixed(1);
+                      return (
+                        <div key={idx} className="mb-2">
+                          <div className="d-flex justify-content-between">
+                            <small>{type}</small>
+                            <small>{percentage}%</small>
+                          </div>
+                          <div className="progress bg-secondary" style={{ height: '8px' }}>
+                            <div 
+                              className="progress-bar bg-warning" 
+                              style={{ width: `${percentage}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              ) : (
+                <p>No component type data available</p>
+              )}
             </div>
           </div>
         </div>
@@ -164,7 +324,7 @@ const SBOMDetails = () => {
             className={`nav-link ${activeTab === 'components' ? 'active bg-warning text-dark' : 'text-light'}`}
             onClick={() => setActiveTab('components')}
           >
-            Components ({components.length})
+            Components ({totalComponents})
           </button>
         </li>
         {searchResults.length > 0 && (
@@ -183,21 +343,30 @@ const SBOMDetails = () => {
         <div className="card bg-dark text-light">
           <div className="card-body">
             <h5 className="card-title text-warning">SBOM Overview</h5>
-            <div className="mb-3">
-              <h6>File Information</h6>
-              <p><strong>Filename:</strong> {filename}</p>
-              {sbom?.bomFormat && <p><strong>SBOM Format:</strong> {sbom.bomFormat}</p>}
-              {sbom?.specVersion && <p><strong>Spec Version:</strong> {sbom.specVersion}</p>}
+            
+            <div className="row">
+              <div className="col-md-6">
+                {renderComponentTypesDistribution()}
+              </div>
+              <div className="col-md-6">
+                {renderLicenseDistribution()}
+              </div>
             </div>
             
-            {sbom?.metadata && (
-              <div className="mb-3">
-                <h6>SBOM Metadata</h6>
-                <pre className="bg-secondary text-white p-3 rounded" style={{ maxHeight: '200px', overflow: 'auto' }}>
-                  {JSON.stringify(sbom.metadata, null, 2)}
-                </pre>
+            <div className="mt-4">
+              <h5 className="text-warning">File Information</h5>
+              <div className="row">
+                <div className="col-md-6">
+                  <p><strong>Filename:</strong> {filename}</p>
+                  {sbom?.content?.bomFormat && <p><strong>SBOM Format:</strong> {sbom.content.bomFormat}</p>}
+                  {sbom?.content?.specVersion && <p><strong>Spec Version:</strong> {sbom.content.specVersion}</p>}
+                </div>
+                <div className="col-md-6">
+                  <p><strong>File Size:</strong> {Math.round((JSON.stringify(sbom?.content || {}).length / 1024))} KB</p>
+                  <p><strong>Created:</strong> {new Date(sbom?.createdAt || Date.now()).toLocaleDateString()}</p>
+                </div>
               </div>
-            )}
+            </div>
           </div>
         </div>
       )}
@@ -225,7 +394,9 @@ const SBOMDetails = () => {
                       <ul className="list-unstyled mb-0">
                         {component.licenses.map((license, i) => (
                           <li key={i}>
-                            {license.license?.id || license.expression || 'Unknown'}
+                            {typeof license === 'string' 
+                              ? license 
+                              : (license.license?.id || license.expression || 'Unknown')}
                           </li>
                         ))}
                       </ul>
@@ -249,45 +420,44 @@ const SBOMDetails = () => {
             <h5 className="card-title text-warning">Search Results for "{searchTerm}"</h5>
             <p>Found {searchResults.length} component(s) matching your search.</p>
             
-            <div className="table-responsive">
-              <table className="table table-dark table-hover">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Version</th>
-                    <th>Type</th>
-                    <th>Details</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {searchResults.map((component, idx) => (
-                    <tr key={idx}>
-                      <td>{component.name || 'N/A'}</td>
-                      <td>{component.version || 'N/A'}</td>
-                      <td>{component.type || 'N/A'}</td>
-                      <td>
-                        <button
-                          className="btn btn-sm btn-outline-warning"
-                          onClick={() => {
-                            const componentDetails = document.getElementById(`details-${idx}`);
-                            if (componentDetails) {
-                              componentDetails.classList.toggle('d-none');
-                            }
-                          }}
-                        >
-                          View Details
-                        </button>
-                        <div id={`details-${idx}`} className="d-none mt-2">
-                          <pre className="bg-secondary text-white p-2 rounded" style={{ maxHeight: '150px', overflow: 'auto' }}>
-                            {JSON.stringify(component, null, 2)}
-                          </pre>
-                        </div>
-                      </td>
+            {searchResults.length > 0 ? (
+              <div className="table-responsive">
+                <table className="table table-dark table-hover">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Version</th>
+                      <th>Type</th>
+                      <th>Licenses</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {searchResults.map((result, idx) => (
+                      <tr key={idx}>
+                        <td>{result.name || 'N/A'}</td>
+                        <td>{result.version || 'N/A'}</td>
+                        <td>{result.type || 'N/A'}</td>
+                        <td>
+                          {result.licenses ? (
+                            <ul className="list-unstyled mb-0">
+                              {result.licenses.map((license, i) => (
+                                <li key={i}>
+                                  {typeof license === 'string' 
+                                    ? license 
+                                    : (license.license?.id || license.expression || 'Unknown')}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : 'N/A'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p>No matching components found.</p>
+            )}
           </div>
         </div>
       )}

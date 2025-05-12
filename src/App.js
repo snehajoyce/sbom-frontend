@@ -10,12 +10,6 @@ import SBOMDetails from './pages/SBOMDetails';
 import Statistics from './pages/Statistics';
 
 function App() {
-  // Function to handle successful generation
-  const handleGenerationSuccess = () => {
-    // Update the SBOM list after successful generation
-    // This would typically fetch the updated list from the backend
-  };
-
   return (
     <Router>
       <div className="bg-dark text-light min-vh-100">

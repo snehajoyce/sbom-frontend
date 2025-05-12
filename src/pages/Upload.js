@@ -6,13 +6,13 @@ const Upload = () => {
   const [message, setMessage] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [metadata, setMetadata] = useState({
-    app_name: '',
+    appName: '',
     category: '',
-    operating_system: '',
-    app_binary_type: 'desktop',
+    operatingSystem: '',
+    binaryType: 'desktop',
     supplier: '',
     manufacturer: '',
-    version: '',
+    appVersion: '',
     cost: '',
     description: ''
   });
@@ -63,9 +63,9 @@ const Upload = () => {
       return;
     }
 
-    // Require app_name at minimum
-    if (!metadata.app_name.trim()) {
-      setMessage('Application Name is required.');
+    // Require all required fields
+    if (!metadata.appName.trim() || !metadata.operatingSystem.trim() || !metadata.appVersion.trim() || !metadata.supplier.trim()) {
+      setMessage('Please fill in all required fields: Application Name, Operating System, Version, and Supplier.');
       return;
     }
 
@@ -86,16 +86,16 @@ const Upload = () => {
       const response = await uploadSBOM(formData);
       console.log('Upload response:', response);
       
-      setMessage(`Upload successful! SBOM for ${metadata.app_name} has been added.`);
+      setMessage(`Upload successful! SBOM for ${metadata.appName} has been added.`);
       setFile(null);
       setMetadata({
-        app_name: '',
+        appName: '',
         category: '',
-        operating_system: '',
-        app_binary_type: 'desktop',
+        operatingSystem: '',
+        binaryType: 'desktop',
         supplier: '',
         manufacturer: '',
-        version: '',
+        appVersion: '',
         cost: '',
         description: ''
       });
@@ -114,8 +114,9 @@ const Upload = () => {
         const errorData = error.response.data || {};
         const errorMessage = errorData.error || errorData.message || `Server error: ${error.response.status}`;
         
-        // Check for the specific readonly database error
-        if (errorMessage.includes('readonly database') || errorMessage.includes('OperationalError')) {
+        // Check for the specific readonly database error - safely check if errorMessage is a string first
+        if (typeof errorMessage === 'string' && 
+            (errorMessage.includes('readonly database') || errorMessage.includes('OperationalError'))) {
           setMessage(
             'Server database error: The application database is in read-only mode. ' +
             'This is a server configuration issue that needs to be addressed by the administrator. ' +
@@ -174,8 +175,8 @@ const Upload = () => {
               <input 
                 type="text" 
                 className="form-control" 
-                name="app_name"
-                value={metadata.app_name}
+                name="appName"
+                value={metadata.appName}
                 onChange={handleInputChange}
                 placeholder="e.g., Firefox, Chrome"
                 required
@@ -200,17 +201,17 @@ const Upload = () => {
               <label className="form-label text-light">Operating System</label>
               <select 
                 className="form-select"
-                name="operating_system"
-                value={metadata.operating_system}
+                name="operatingSystem"
+                value={metadata.operatingSystem}
                 onChange={handleInputChange}
+                required
               >
                 <option value="">Select OS</option>
-                <option value="Windows">Windows</option>
-                <option value="Linux">Linux</option>
-                <option value="macOS">macOS</option>
-                <option value="Android">Android</option>
-                <option value="iOS">iOS</option>
-                <option value="Cross-platform">Cross-platform</option>
+                <option value="windows">Windows</option>
+                <option value="linux">Linux</option>
+                <option value="macos">macOS</option>
+                <option value="android">Android</option>
+                <option value="ios">iOS</option>
               </select>
             </div>
             
@@ -218,16 +219,16 @@ const Upload = () => {
               <label className="form-label text-light">Binary Type</label>
               <select 
                 className="form-select"
-                name="app_binary_type"
-                value={metadata.app_binary_type}
+                name="binaryType"
+                value={metadata.binaryType}
                 onChange={handleInputChange}
               >
                 <option value="desktop">Desktop</option>
                 <option value="mobile">Mobile</option>
                 <option value="web">Web</option>
                 <option value="server">Server</option>
-                <option value="embedded">Embedded</option>
-                <option value="library">Library</option>
+                <option value="iot">IoT</option>
+                <option value="other">Other</option>
               </select>
             </div>
             
@@ -236,10 +237,11 @@ const Upload = () => {
               <input 
                 type="text" 
                 className="form-control" 
-                name="version"
-                value={metadata.version}
+                name="appVersion"
+                value={metadata.appVersion}
                 onChange={handleInputChange}
                 placeholder="e.g., 1.0.0"
+                required
               />
             </div>
           </div>
@@ -254,6 +256,7 @@ const Upload = () => {
                 value={metadata.supplier}
                 onChange={handleInputChange}
                 placeholder="e.g., Mozilla"
+                required
               />
             </div>
             
